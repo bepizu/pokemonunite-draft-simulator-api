@@ -4,6 +4,7 @@ const httpServer = require('http')
 const cors = require('cors')
 const environment = require("./config/environment")
 const { initDraftSocket } = require("./drafts/socket")
+const draftController = require("./drafts/controllers")
 
 function startApp() {
   const app = express()
@@ -11,6 +12,8 @@ function startApp() {
   app.use(express.json())
   app.use(express.urlencoded())
   app.use(cors())
+
+  app.use("/drafts", draftController)
 
   const server = httpServer.createServer(app)
 
