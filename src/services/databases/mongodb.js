@@ -22,7 +22,7 @@ async function findAll(collection, query, options = null) {
   } catch (error) {
     console.error('findAll error', error)
   } finally {
-    mongoDbClient.close()
+    await mongoDbClient.close()
   }
 
   return []
@@ -41,7 +41,7 @@ async function findOne(collection, query, options = null) {
   } catch (error) {
     console.error('findOne error', error)
   } finally {
-    mongoDbClient.close()
+    await mongoDbClient.close()
   }
 
   return null
@@ -60,7 +60,7 @@ async function insert(collection, document, options = null) {
   } catch (error) {
     console.error('insert error', error)
   } finally {
-    mongoDbClient.close()
+    await mongoDbClient.close()
   }
 
   return null
@@ -84,7 +84,7 @@ async function update(
   } catch (error) {
     console.error('update error', error)
   } finally {
-    mongoDbClient.close()
+    await mongoDbClient.close()
   }
 
   return false
@@ -107,7 +107,7 @@ async function remove(
   } catch (error) {
     console.error('remove error', error)
   } finally {
-    mongoDbClient.close()
+    await mongoDbClient.close()
   }
 
   return false

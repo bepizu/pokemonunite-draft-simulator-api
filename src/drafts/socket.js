@@ -231,7 +231,7 @@ async function selectPick({io, payload: { draftSessionId, pokemon, selectedTeam,
     }
     
     const finishTurn = picks.every(pick => teamPickSelected[pick].name !== undefined)
-    
+
     !draftSessionsCountdown[draftSessionId] && (draftSessionsCountdown[draftSessionId] = {})
     const draftSessionCountdown = draftSessionsCountdown[draftSessionId]
 
@@ -283,12 +283,12 @@ async function updateDraftSession({io, draftSession}) {
   let draftSessionToUpdate = {}
   Object.keys(draftSession).filter(key => key !== "_id").map(key => draftSessionToUpdate[key] = draftSession[key])
 
-  let result = true
+  let result
   
   if (draftSession.draftType === "individual") {
     result = true
   } else {
-    // result = await updateDraft({sessionId: draftSession._id, payload: draftSessionToUpdate})
+    result = await updateDraft({sessionId: draftSession._id, payload: draftSessionToUpdate})
   }
 
   if (result) {
