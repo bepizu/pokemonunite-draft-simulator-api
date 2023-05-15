@@ -1,5 +1,5 @@
-import { Router } from 'express'
-import { createDraft, getDraft, updateDraft } from './models'
+const { Router } = require('express')
+const { createDraft, getDraft, updateDraft } = require('./models')
 
 const { insert } = require('../services/databases/mongodb')
 const { OKResponse, ErrorResponse } = require('../utils/requests')
