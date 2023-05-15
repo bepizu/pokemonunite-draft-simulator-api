@@ -231,7 +231,9 @@ async function selectPick({io, payload: { draftSessionId, pokemon, selectedTeam,
     }
     
     const finishTurn = picks.every(pick => teamPickSelected[pick].name !== undefined)
-    const draftSessionCountdown = draftSessionsCountdown[draftSession._id]
+    
+    !draftSessionsCountdown[draftSessionId] && (draftSessionsCountdown[draftSessionId] = {})
+    const draftSessionCountdown = draftSessionsCountdown[draftSessionId]
 
     if (finishTurn) {
       const nextPickTurn = draftSession.pickTurn + 1
