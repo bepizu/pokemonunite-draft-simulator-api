@@ -1,4 +1,4 @@
-const { findOne, update, IndexType } = require("../services/databases/mongodb")
+const { findOne, insert, update, IndexType } = require("../services/databases/mongodb")
 
 
 async function getDraft({sessionId}) {
