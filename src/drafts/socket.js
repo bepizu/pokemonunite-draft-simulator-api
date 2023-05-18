@@ -3,7 +3,9 @@ const {
   MAX_COUNTDOWN_TIMER,
   DRAFT_STATUS,
   POKEMONS,
-  PICK_ORDER,
+  TeamEnum,
+  PICK_ORDER_ALTERNATE_BAN,
+  PICK_ORDER_SIMULTANEOUSLY_BAN,
 } = require('../config/constants');
 
 let draftSessions = {};
@@ -48,6 +50,7 @@ function initDraftSocket({ io, socket }) {
     updateDraftStatus({ io, payload })
   );
   socket.on('select-pick', (payload) => selectPick({ io, payload }));
+  socket.on('select-ban', (payload) => selectBans({ io, payload }));
 }
 
 async function enterDraft({
@@ -146,59 +149,110 @@ function updateDraftStatus({
           // timedout algorithm
           clearInterval(draftSessionCountdown.interval);
 
-          const pickTurn = PICK_ORDER[draftSession.pickTurn];
+          const pickTurn =
+            draftSession.draftType !== 'individual'
+              ? PICK_ORDER_SIMULTANEOUSLY_BAN[draftSession.pickTurn]
+              : PICK_ORDER_ALTERNATE_BAN[draftSession.pickTurn];
           const timedoutSelection = [];
 
-          pickTurn.picks.forEach((pick) => {
-            if (draftSession.pokemons) {
-              const notSelectedPokemonList = draftSession.pokemons.filter(
-                (pkmn) => pkmn.picked === undefined
-              );
+          if (
+            draftSession.draftType === 'individual' ||
+            draftSession.pickTurn > 0
+          ) {
+            pickTurn.picks.forEach((pick) => {
+              if (draftSession.pokemons) {
+                const notSelectedPokemonList = draftSession.pokemons.filter(
+                  (pkmn) => pkmn.picked === undefined
+                );
 
-              let randomNumber;
-              do {
-                randomNumber = Math.random() * notSelectedPokemonList.length;
-              } while (!(randomNumber < notSelectedPokemonList.length));
+                let randomNumber;
+                do {
+                  randomNumber = Math.random() * notSelectedPokemonList.length;
+                } while (!(randomNumber < notSelectedPokemonList.length));
 
-              const pokemon =
-                notSelectedPokemonList[Math.round(randomNumber) - 1];
-              const pickAlreadySelectedByTeam =
-                draftSession[pickTurn.team][pick].name;
-              const selectedPokemonOnTimedout = timedoutSelection.find(
-                (pkmn) => pkmn.name === pokemon.name
-              );
+                const pokemon =
+                  notSelectedPokemonList[Math.round(randomNumber) - 1];
+                const pickAlreadySelectedByTeam =
+                  draftSession[pickTurn.team][pick].name;
+                const selectedPokemonOnTimedout = timedoutSelection.find(
+                  (pkmn) => pkmn.name === pokemon.name
+                );
 
-              if (!selectedPokemonOnTimedout && !pickAlreadySelectedByTeam) {
-                timedoutSelection.push(pokemon);
+                if (!selectedPokemonOnTimedout && !pickAlreadySelectedByTeam) {
+                  timedoutSelection.push(pokemon);
+                }
+              } else {
+                console.warn('pokemon list empty');
               }
-            } else {
-              console.warn('pokemon list empty');
-            }
-          });
+            });
 
-          timedoutSelection.forEach((pkmn) => {
-            selectPick({
+            timedoutSelection.forEach((pkmn) => {
+              selectPick({
+                io,
+                payload: {
+                  draftSessionId: sessionId,
+                  pokemon: pkmn,
+                  pickTurnTeam:
+                    pickTurnTeam === TeamEnum.TEAM1
+                      ? TeamEnum.TEAM2
+                      : TeamEnum.TEAM1,
+                  timedout: true,
+                },
+              });
+            });
+          } else {
+            ['team1_ban1', 'team2_ban1'].forEach((teamPick) => {
+              const team = teamPick.split('_')[0];
+              const pick = teamPick.split('_')[1];
+
+              if (draftSession.pokemons) {
+                const notSelectedPokemonList = draftSession.pokemons.filter(
+                  (pkmn) => pkmn.picked === undefined
+                );
+
+                let randomNumber;
+                do {
+                  randomNumber = Math.random() * notSelectedPokemonList.length;
+                } while (!(randomNumber < notSelectedPokemonList.length));
+
+                const pokemon =
+                  notSelectedPokemonList[Math.round(randomNumber) - 1];
+
+                timedoutSelection.push({ team, pick, pokemon });
+              } else {
+                console.warn('pokemon list empty');
+              }
+            });
+
+            selectBans({
               io,
               payload: {
                 draftSessionId: sessionId,
-                pokemon: pkmn,
-                pickTurnTeam: pickTurnTeam === 'team1' ? 'team2' : 'team1',
+                bans: timedoutSelection,
                 timedout: true,
               },
             });
-          });
+          }
 
-          if (pickTurn.turn < 7) {
+          const limitTurn =
+            draftSession.draftType !== 'individual'
+              ? PICK_ORDER_SIMULTANEOUSLY_BAN.length
+              : PICK_ORDER_ALTERNATE_BAN.length;
+
+          if (pickTurn.turn < limitTurn) {
             // RESET COUNTDOWN
             updateDraftStatus({
               io,
               payload: {
                 sessionId: draftSession._id,
                 draftStatus: DRAFT_STATUS.STARTED,
-                pickTurnTeam: pickTurnTeam === 'team1' ? 'team2' : 'team1',
+                pickTurnTeam:
+                  pickTurnTeam === TeamEnum.TEAM1
+                    ? TeamEnum.TEAM2
+                    : TeamEnum.TEAM1,
               },
             });
-          } else if (pickTurn.turn === 7) {
+          } else if (pickTurn.turn === limitTurn) {
             draftSessionCountdown.draftStatus = DRAFT_STATUS.FINISHED;
             draftSessionCountdown.countdown = 0;
 
@@ -207,7 +261,10 @@ function updateDraftStatus({
               payload: {
                 sessionId: draftSession._id,
                 draftStatus: DRAFT_STATUS.FINISHED,
-                pickTurnTeam: pickTurnTeam === 'team1' ? 'team2' : 'team1',
+                pickTurnTeam:
+                  pickTurnTeam === TeamEnum.TEAM1
+                    ? TeamEnum.TEAM2
+                    : TeamEnum.TEAM1,
               },
             });
           }
@@ -227,12 +284,95 @@ function updateDraftStatus({
       io.to(`${sessionId}`).emit('update-draft-countdown', {
         draftStatus: draftSessionCountdown.draftStatus,
         countdown: MAX_COUNTDOWN_TIMER,
-        pickTurnTeam: pickTurnTeam === 'team1' ? 'team2' : 'team1',
+        pickTurnTeam:
+          pickTurnTeam === TeamEnum.TEAM1 ? TeamEnum.TEAM2 : TeamEnum.TEAM1,
       });
       break;
 
     default:
       console.warn('unknown-draft-status', { sessionId, draftStatus });
+  }
+}
+
+async function selectBans({ io, payload: { draftSessionId, bans, timedout } }) {
+  const draftSession = draftSessions[draftSessionId];
+  !draftSessionsCountdown[draftSessionId] &&
+    (draftSessionsCountdown[draftSessionId] = {});
+  const draftSessionCountdown = draftSessionsCountdown[draftSessionId];
+
+  const canPickPokemon = draftSession.draftType !== 'spectator';
+
+  if (
+    (!timedout && !canPickPokemon) ||
+    draftSession.draftType === 'spectator' ||
+    draftSessionCountdown.draftStatus !== DRAFT_STATUS.STARTED
+  ) {
+    return;
+  }
+
+  if (draftSession && draftSession.pokemons) {
+    for (let i = 0; i < bans.length; i++) {
+      const { team, pokemon, pick } = bans[i];
+
+      if (draftSession[team][pick].name === undefined) {
+        draftSession[team][pick] = pokemon;
+
+        const selectedPokemon = draftSession.pokemons.find(
+          (pkmn) => pkmn.name === pokemon.name
+        );
+
+        selectedPokemon && (selectedPokemon.picked = team);
+
+        break;
+      }
+    }
+
+    const finishTurn =
+      draftSession.team1.ban1.name !== undefined &&
+      draftSession.team2.ban1.name !== undefined;
+
+    if (finishTurn) {
+      draftSession.pickTurn = draftSession.pickTurn + 1;
+
+      if (draftSession.team1.ban1.name === draftSession.team2.ban1.name) {
+        const selectedPokemon = draftSession.pokemons.find(
+          (pkmn) => pkmn.name === draftSession.team1.ban1.name
+        );
+
+        selectedPokemon && (selectedPokemon.picked = TeamEnum.BOTH);
+      }
+
+      if (
+        draftSessionCountdown &&
+        draftSessionCountdown.draftStatus === DRAFT_STATUS.STARTED
+      ) {
+        io.to(`${draftSession._id}`).emit('update-draft-countdown', {
+          draftStatus: DRAFT_STATUS.STARTED,
+          countdown: MAX_COUNTDOWN_TIMER,
+          pickTurnTeam: TeamEnum.TEAM1,
+        });
+        updateDraftStatus({
+          io,
+          payload: {
+            sessionId: draftSession._id,
+            draftStatus: DRAFT_STATUS.STARTED,
+            pickTurnTeam: TeamEnum.TEAM1,
+          },
+        });
+      }
+
+      updateDraftSession({ io, draftSession });
+    } else {
+      let messateToSpecifiedTeam;
+
+      if (draftSession.team1.ban1.name !== undefined) {
+        messateToSpecifiedTeam = TeamEnum.TEAM1;
+      } else if (draftSession.team2.ban1.name !== undefined) {
+        messateToSpecifiedTeam = TeamEnum.TEAM2;
+      }
+
+      updateDraftSession({ io, draftSession, messateToSpecifiedTeam });
+    }
   }
 }
 
@@ -244,6 +384,11 @@ async function selectPick({
   !draftSessionsCountdown[draftSessionId] &&
     (draftSessionsCountdown[draftSessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[draftSessionId];
+
+  const PICK_ORDER =
+    draftSession.draftType !== 'individual'
+      ? PICK_ORDER_SIMULTANEOUSLY_BAN
+      : PICK_ORDER_ALTERNATE_BAN;
   const { team, picks } = PICK_ORDER[draftSession.pickTurn];
   const canPickPokemon =
     (team === selectedTeam || draftSession.draftType === 'individual') &&
@@ -296,14 +441,18 @@ async function selectPick({
           io.to(`${draftSession._id}`).emit('update-draft-countdown', {
             draftStatus: DRAFT_STATUS.STARTED,
             countdown: MAX_COUNTDOWN_TIMER,
-            pickTurnTeam: selectedTeam === 'team1' ? 'team2' : 'team1',
+            pickTurnTeam:
+              selectedTeam === TeamEnum.TEAM1 ? TeamEnum.TEAM2 : TeamEnum.TEAM1,
           });
           updateDraftStatus({
             io,
             payload: {
               sessionId: draftSession._id,
               draftStatus: DRAFT_STATUS.STARTED,
-              pickTurnTeam: selectedTeam === 'team1' ? 'team2' : 'team1',
+              pickTurnTeam:
+                selectedTeam === TeamEnum.TEAM1
+                  ? TeamEnum.TEAM2
+                  : TeamEnum.TEAM1,
             },
           });
         }
@@ -317,7 +466,8 @@ async function selectPick({
           payload: {
             sessionId: draftSession._id,
             draftStatus: DRAFT_STATUS.FINISHED,
-            pickTurnTeam: selectedTeam === 'team1' ? 'team2' : 'team1',
+            pickTurnTeam:
+              selectedTeam === TeamEnum.TEAM1 ? TeamEnum.TEAM2 : TeamEnum.TEAM1,
           },
         });
       }
@@ -327,13 +477,22 @@ async function selectPick({
   }
 }
 
-async function updateDraftSession({ io, draftSession }) {
+async function updateDraftSession({
+  io,
+  draftSession,
+  messateToSpecifiedTeam,
+}) {
   let draftSessionToUpdate = {};
   Object.keys(draftSession)
     .filter((key) => key !== '_id')
     .map((key) => (draftSessionToUpdate[key] = draftSession[key]));
 
   let result;
+  let room = `${draftSession._id}`;
+
+  if (messateToSpecifiedTeam) {
+    room = `${room}_${messateToSpecifiedTeam}`;
+  }
 
   if (draftSession.draftType === 'individual') {
     result = true;
@@ -345,7 +504,7 @@ async function updateDraftSession({ io, draftSession }) {
   }
 
   if (result) {
-    io.to(`${draftSession._id}`).emit('draft-update', draftSession);
+    io.to(room).emit('draft-update', draftSession);
   } else {
   }
 }
