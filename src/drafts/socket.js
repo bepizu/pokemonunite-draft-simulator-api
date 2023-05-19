@@ -137,7 +137,10 @@ function updateDraftStatus({
       }
 
       draftSessionCountdown.interval = setInterval(() => {
-        if (draftSessionCountdown.countdown > 0) {
+        if (
+          draftSessionCountdown.countdown > 0 &&
+          draftSessionCountdown.draftStatus !== DRAFT_STATUS.FINISHED
+        ) {
           draftSessionCountdown.countdown = draftSessionCountdown.countdown - 1;
 
           io.to(`${sessionId}`).emit('update-draft-countdown', {
@@ -239,7 +242,7 @@ function updateDraftStatus({
               ? PICK_ORDER_SIMULTANEOUSLY_BAN.length
               : PICK_ORDER_ALTERNATE_BAN.length;
 
-          if (pickTurn.turn < limitTurn) {
+          if (pickTurn.turn < limitTurn - 1) {
             // RESET COUNTDOWN
             updateDraftStatus({
               io,
@@ -283,7 +286,7 @@ function updateDraftStatus({
       clearInterval(draftSessionCountdown.interval);
       io.to(`${sessionId}`).emit('update-draft-countdown', {
         draftStatus: draftSessionCountdown.draftStatus,
-        countdown: MAX_COUNTDOWN_TIMER,
+        countdown: 0,
         pickTurnTeam:
           pickTurnTeam === TeamEnum.TEAM1 ? TeamEnum.TEAM2 : TeamEnum.TEAM1,
       });
@@ -322,8 +325,6 @@ async function selectBans({ io, payload: { draftSessionId, bans, timedout } }) {
         );
 
         selectedPokemon && (selectedPokemon.picked = team);
-
-        break;
       }
     }
 
