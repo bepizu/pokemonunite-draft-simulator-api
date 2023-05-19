@@ -1,116 +1,116 @@
-const { MongoClient, ObjectId } = require('mongodb')
-const environment = require('../../config/environment')
+const { MongoClient, ObjectId } = require('mongodb');
+const environment = require('../../config/environment');
 
-const IndexType = ObjectId
+const IndexType = ObjectId;
 
-const mongoDbUri = environment.MONGODB_URI
-const mongoDbClient = new MongoClient(mongoDbUri)
-const MONGODB_DATABASE = "draft_simulator"
+const mongoDbUri = environment.MONGODB_URI;
+const MONGODB_DATABASE = 'draft_simulator';
 
 async function findAll(collection, query, options = null) {
+  const mongoDbClient = new MongoClient(mongoDbUri);
+
   try {
-    await mongoDbClient.connect()
+    await mongoDbClient.connect();
 
-    const cursor = await mongoDbClient
-      .db(MONGODB_DATABASE)
-      .collection(collection)
-      .find<WithId>(query, options)
+    const cursor =
+      (await mongoDbClient.db(MONGODB_DATABASE).collection(collection).find) <
+      WithId >
+      (query, options);
 
-    const data = await cursor.toArray()
+    const data = await cursor.toArray();
 
-    return data
+    return data;
   } catch (error) {
-    console.error('findAll error', error)
+    console.error('findAll error', error);
   } finally {
-    await mongoDbClient.close()
+    await mongoDbClient.close();
   }
 
-  return []
+  return [];
 }
 
 async function findOne(collection, query, options = null) {
+  const mongoDbClient = new MongoClient(mongoDbUri);
+
   try {
-    await mongoDbClient.connect()
+    await mongoDbClient.connect();
 
     const data = await mongoDbClient
       .db(MONGODB_DATABASE)
       .collection(collection)
-      .findOne(query, options)
-      
-    return data
+      .findOne(query, options);
+
+    return data;
   } catch (error) {
-    console.error('findOne error', error)
+    console.error('findOne error', error);
   } finally {
-    await mongoDbClient.close()
+    await mongoDbClient.close();
   }
 
-  return null
+  return null;
 }
 
 async function insert(collection, document, options = null) {
+  const mongoDbClient = new MongoClient(mongoDbUri);
+
   try {
-    await mongoDbClient.connect()
+    await mongoDbClient.connect();
 
     const data = await mongoDbClient
       .db(MONGODB_DATABASE)
       .collection(collection)
-      .insertOne(document)
+      .insertOne(document);
 
-    return data.insertedId.toString()
+    return data.insertedId.toString();
   } catch (error) {
-    console.error('insert error', error)
+    console.error('insert error', error);
   } finally {
-    await mongoDbClient.close()
+    await mongoDbClient.close();
   }
 
-  return null
+  return null;
 }
 
-async function update(
-  collection, 
-  filter, 
-  document, 
-  options = null
-) {
+async function update(collection, filter, document, options = null) {
+  const mongoDbClient = new MongoClient(mongoDbUri);
+
   try {
-    await mongoDbClient.connect()
+    await mongoDbClient.connect();
 
     const data = await mongoDbClient
       .db(MONGODB_DATABASE)
       .collection(collection)
-      .updateOne(filter, {"$set": document})
+      .updateOne(filter, { $set: document });
 
-    return data.modifiedCount > 0
+    return data.modifiedCount > 0;
   } catch (error) {
-    console.error('update error', error)
+    console.error('update error', error);
   } finally {
-    await mongoDbClient.close()
+    await mongoDbClient.close();
   }
 
-  return false
+  return false;
 }
 
-async function remove(
-  collection, 
-  filter,
-  options = null
-) {
+async function remove(collection, filter, options = null) {
+  const mongoDbClient = new MongoClient(mongoDbUri);
+
   try {
-    await mongoDbClient.connect()
+    await mongoDbClient.connect();
 
     const data = await mongoDbClient
       .db(MONGODB_DATABASE)
       .collection(collection)
-      .deleteOne(filter)
+      .deleteOne(filter);
 
-    return data.deletedCount > 0
+    return data.deletedCount > 0;
   } catch (error) {
-    console.error('remove error', error)
+    console.error('remove error', error);
   } finally {
-    await mongoDbClient.close()
+    await mongoDbClient.close();
   }
 
-  return false
+  return false;
 }
 
 module.exports = {
@@ -119,5 +119,5 @@ module.exports = {
   findOne,
   insert,
   update,
-  remove
-}
+  remove,
+};
