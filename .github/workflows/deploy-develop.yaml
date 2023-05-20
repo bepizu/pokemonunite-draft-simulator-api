@@ -1,0 +1,39 @@
+name: API Deployment - Beta
+
+on:
+  push:
+    branches:
+      - develop
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Building Project
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Publishing container
+        run: |
+          echo "${{secrets.BEPIZU_DRAFT_KEY}}" > ./server-key.pem
+          chmod 400 ./server-key.pem
+          eval $(ssh-agent)
+          ssh-add -k ./server-key.pem
+          mkdir -p ~/.ssh && echo "Host *" > ~/.ssh/config && echo " StrictHostKeyChecking no" >> ~/.ssh/config
+
+          export DOCKER_HOST="ssh://ubuntu@api-beta.bepizu.com.br"
+
+          echo "PORT=8002" >> .env
+          echo "MONGODB_URI=mongodb://localhost:27017" >> .env
+          echo "MONGODB_DATABASE=draft_simulator_beta" >> .env
+
+          npm i
+
+          docker image build -t bepizu-api-beta:latest -f Dockerfile .
+
+          docker container stop bepizu-api-beta || echo "bepizu-api-beta's container not running"
+          docker run -d --name bepizu-api-beta --restart unless-stopped --network host bepizu-api-beta:latest
+
+          docker system prune -a -f

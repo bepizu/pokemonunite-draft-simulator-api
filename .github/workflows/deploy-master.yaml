@@ -1,10 +1,9 @@
-name: API Deployment
+name: API Deployment - Prod
 
 on:
   push:
     branches:
       - master
-      - develop
 
   workflow_dispatch:
 
@@ -28,12 +27,7 @@ jobs:
 
           echo "PORT=8001" >> .env
           echo "MONGODB_URI=mongodb://localhost:27017" >> .env
-
-          if [[ "${GITHUB_REF#refs/heads/}" == "master" ]]; then
-            echo "MONGODB_DATABASE=draft_simulator" >> .env
-          else
-            echo "MONGODB_DATABASE=draft_simulator_beta" >> .env
-          fi
+          echo "MONGODB_DATABASE=draft_simulator" >> .env
 
           npm i
 
