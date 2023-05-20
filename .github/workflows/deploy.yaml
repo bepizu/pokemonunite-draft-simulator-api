@@ -32,6 +32,8 @@ jobs:
           npm i
 
           docker image build -t bepizu-api:latest -f Dockerfile .
-          docker run -d --name bepizu-api --network host bepizu-api:latest
+
+          docker container stop bepizu-api || echo "bepizu-api's container not running"
+          docker run -d --name bepizu-api --restart unless-stopped --network host bepizu-api:latest
 
           docker system prune -a -f
