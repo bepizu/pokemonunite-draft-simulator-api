@@ -4,7 +4,7 @@ const environment = require('../../config/environment');
 const IndexType = ObjectId;
 
 const mongoDbUri = environment.MONGODB_URI;
-const MONGODB_DATABASE = 'draft_simulator';
+const MONGODB_DATABASE = environment.MONGODB_DATABASE;
 
 async function findAll(collection, query, options = null) {
   const mongoDbClient = new MongoClient(mongoDbUri);
