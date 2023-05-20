@@ -29,6 +29,12 @@ jobs:
           echo "PORT=8001" >> .env
           echo "MONGODB_URI=mongodb://localhost:27017" >> .env
 
+          if [[ "${GITHUB_REF#refs/heads/}" == "master" ]]; then
+            echo "MONGODB_DATABASE=draft_simulator" >> .env
+          else
+            echo "MONGODB_DATABASE=draft_simulator_beta" >> .env
+          fi
+
           npm i
 
           docker image build -t bepizu-api:latest -f Dockerfile .
