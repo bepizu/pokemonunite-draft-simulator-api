@@ -34,6 +34,7 @@ jobs:
           docker image build -t bepizu-api:latest -f Dockerfile .
 
           docker container stop bepizu-api || echo "bepizu-api's container not running"
+          docker container rm bepizu-api || echo "bepizu-api's container not exists"
           docker run -d --name bepizu-api --restart unless-stopped --network host bepizu-api:latest
 
           docker system prune -a -f
