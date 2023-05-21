@@ -1,4 +1,4 @@
-const { getDraft, updateDraft } = require('./models');
+const { getDraft, createDraft, updateDraft } = require('./models');
 const {
   MAX_COUNTDOWN_TIMER,
   DRAFT_STATUS,
@@ -53,74 +53,73 @@ function initDraftSocket({ io, socket }) {
   socket.on('select-ban', (payload) => selectBans({ io, payload }));
 }
 
-async function enterDraft({
-  socket,
-  io,
-  payload: { sessionId, viewType, draftType },
-}) {
-  socket.join([sessionId, `${sessionId}_${viewType}`]);
+async function getDraftSession({ draftSessionId }) {
+  let draftSession;
 
-  let draftSession = draftSessions[sessionId];
-
-  if (!draftSession) {
-    let draftData;
-
-    if (draftType === 'professional' || draftType === 'spectator') {
-      draftData = await getDraft({ sessionId });
-    } else {
-      draftData = {
-        _id: sessionId,
-        lobbyId: '',
-        team1: {
-          name: 'Team 1',
-          ban1: {},
-          pick1: {},
-          pick2: {},
-          pick3: {},
-          pick4: {},
-          pick5: {},
-        },
-        team2: {
-          name: 'Team 2',
-          ban1: {},
-          pick1: {},
-          pick2: {},
-          pick3: {},
-          pick4: {},
-          pick5: {},
-        },
-        draftType,
-        spectator: {
-          active: false,
-        },
-        pickTurn: 0,
-      };
-    }
-
+  if (!draftSessionId) {
     draftSession = {
-      ...draftData,
+      lobbyId: '',
+      team1: {
+        name: 'Team 1',
+        ban1: {},
+        pick1: {},
+        pick2: {},
+        pick3: {},
+        pick4: {},
+        pick5: {},
+      },
+      team2: {
+        name: 'Team 2',
+        ban1: {},
+        pick1: {},
+        pick2: {},
+        pick3: {},
+        pick4: {},
+        pick5: {},
+      },
+      draftType: 'individual',
+      spectator: {
+        active: false,
+      },
+      pickTurn: 0,
       pokemons: POKEMONS.filter((pkmn) => pkmn.active).map((pkmn) =>
         Object.assign({}, pkmn)
       ),
-      connections: { [viewType]: socket.id },
+      connections: { team1: '', team2: '' },
     };
+
+    const id = await createDraft({ payload: draftSession });
+    draftSession._id = id;
+    draftSessions[id] = draftSession;
   } else {
-    draftSession.connections[viewType] = socket.id;
+    draftSession = draftSessions[draftSessionId];
+
+    if (!draftSession) {
+      draftSession = await getDraft({ sessionId: draftSessionId });
+    }
   }
 
+  return draftSession;
+}
+
+async function enterDraft({ socket, io, payload: { sessionId, viewType } }) {
+  socket.join([sessionId, `${sessionId}_${viewType}`]);
+
+  const draftSession = await getDraftSession({ draftSessionId: sessionId });
+  draftSession.connections[viewType] = socket.id;
   draftSessions[sessionId] = draftSession;
 
   io.to(`${sessionId}_${viewType}`).emit('draft-update', draftSession);
 }
 
-function updateDraftStatus({
+async function updateDraftStatus({
   io,
   payload: { sessionId, draftStatus, pickTurnTeam },
 }) {
   !draftSessionsCountdown[sessionId] &&
     (draftSessionsCountdown[sessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[sessionId];
-  const draftSession = draftSessions[sessionId];
+  const draftSession = await getDraftSession({ draftSessionId: sessionId });
 
   switch (draftStatus) {
     case DRAFT_STATUS.NOT_STARTED:
@@ -298,10 +297,10 @@ function updateDraftStatus({
 }
 
 async function selectBans({ io, payload: { draftSessionId, bans, timedout } }) {
-  const draftSession = draftSessions[draftSessionId];
   !draftSessionsCountdown[draftSessionId] &&
     (draftSessionsCountdown[draftSessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[draftSessionId];
+  const draftSession = await getDraftSession({ draftSessionId });
 
   const canPickPokemon = draftSession.draftType !== 'spectator';
 
@@ -381,10 +380,10 @@ async function selectPick({
   io,
   payload: { draftSessionId, pokemon, selectedTeam, timedout },
 }) {
-  const draftSession = draftSessions[draftSessionId];
   !draftSessionsCountdown[draftSessionId] &&
     (draftSessionsCountdown[draftSessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[draftSessionId];
+  const draftSession = await getDraftSession({ draftSessionId });
 
   const PICK_ORDER =
     draftSession.draftType !== 'individual'
