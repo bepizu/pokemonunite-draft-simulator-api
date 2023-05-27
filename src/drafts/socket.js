@@ -47,13 +47,13 @@ function initDraftSocket({ io, socket }) {
 
   socket.on('enter-draft', (payload) => enterDraft({ socket, io, payload }));
   socket.on('update-status-draft', (payload) =>
-    updateDraftStatus({ io, payload })
+    updateDraftStatus({ socket, io, payload })
   );
-  socket.on('select-pick', (payload) => selectPick({ io, payload }));
-  socket.on('select-ban', (payload) => selectBans({ io, payload }));
+  socket.on('select-pick', (payload) => selectPick({ socket, io, payload }));
+  socket.on('select-ban', (payload) => selectBans({ socket, io, payload }));
 }
 
-async function getDraftSession({ draftSessionId }) {
+async function getDraftSession({ socket, draftSessionId, viewType }) {
   let draftSession;
 
   if (!draftSessionId) {
@@ -91,6 +91,8 @@ async function getDraftSession({ draftSessionId }) {
     const id = await createDraft({ payload: draftSession });
     draftSession._id = id;
     draftSessions[id] = draftSession;
+
+    socket.join([`${id}`, `${id}_${viewType}`]);
   } else {
     draftSession = draftSessions[draftSessionId];
 
@@ -103,23 +105,41 @@ async function getDraftSession({ draftSessionId }) {
 }
 
 async function enterDraft({ socket, io, payload: { sessionId, viewType } }) {
-  socket.join([sessionId, `${sessionId}_${viewType}`]);
+  const draftRooms = [`${socket.id}`];
 
-  const draftSession = await getDraftSession({ draftSessionId: sessionId });
+  if (sessionId) {
+    draftRooms.push(`${sessionId}_${viewType}`);
+    draftRooms.push(sessionId);
+  }
+
+  socket.join(draftRooms);
+
+  const draftSession = await getDraftSession({
+    socket,
+    draftSessionId: sessionId,
+    viewType,
+  });
   draftSession.connections[viewType] = socket.id;
-  draftSessions[sessionId] = draftSession;
+  draftSessions[sessionId || draftSession._id] = draftSession;
 
-  io.to(`${sessionId}_${viewType}`).emit('draft-update', draftSession);
+  io.to(`${sessionId || draftSession._id}_${viewType}`).emit(
+    'draft-update',
+    draftSession
+  );
 }
 
 async function updateDraftStatus({
   io,
+  socket,
   payload: { sessionId, draftStatus, pickTurnTeam },
 }) {
   !draftSessionsCountdown[sessionId] &&
     (draftSessionsCountdown[sessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[sessionId];
-  const draftSession = await getDraftSession({ draftSessionId: sessionId });
+  const draftSession = await getDraftSession({
+    socket,
+    draftSessionId: sessionId,
+  });
 
   switch (draftStatus) {
     case DRAFT_STATUS.NOT_STARTED:
@@ -245,6 +265,7 @@ async function updateDraftStatus({
             // RESET COUNTDOWN
             updateDraftStatus({
               io,
+              socket,
               payload: {
                 sessionId: draftSession._id,
                 draftStatus: DRAFT_STATUS.STARTED,
@@ -260,6 +281,7 @@ async function updateDraftStatus({
 
             updateDraftStatus({
               io,
+              socket,
               payload: {
                 sessionId: draftSession._id,
                 draftStatus: DRAFT_STATUS.FINISHED,
@@ -296,11 +318,15 @@ async function updateDraftStatus({
   }
 }
 
-async function selectBans({ io, payload: { draftSessionId, bans, timedout } }) {
+async function selectBans({
+  socket,
+  io,
+  payload: { draftSessionId, bans, timedout },
+}) {
   !draftSessionsCountdown[draftSessionId] &&
     (draftSessionsCountdown[draftSessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[draftSessionId];
-  const draftSession = await getDraftSession({ draftSessionId });
+  const draftSession = await getDraftSession({ socket, draftSessionId });
 
   const canPickPokemon = draftSession.draftType !== 'spectator';
 
@@ -353,6 +379,7 @@ async function selectBans({ io, payload: { draftSessionId, bans, timedout } }) {
         });
         updateDraftStatus({
           io,
+          socket,
           payload: {
             sessionId: draftSession._id,
             draftStatus: DRAFT_STATUS.STARTED,
@@ -377,13 +404,14 @@ async function selectBans({ io, payload: { draftSessionId, bans, timedout } }) {
 }
 
 async function selectPick({
+  socket,
   io,
   payload: { draftSessionId, pokemon, selectedTeam, timedout },
 }) {
   !draftSessionsCountdown[draftSessionId] &&
     (draftSessionsCountdown[draftSessionId] = {});
   const draftSessionCountdown = draftSessionsCountdown[draftSessionId];
-  const draftSession = await getDraftSession({ draftSessionId });
+  const draftSession = await getDraftSession({ socket, draftSessionId });
 
   const PICK_ORDER =
     draftSession.draftType !== 'individual'
@@ -446,6 +474,7 @@ async function selectPick({
           });
           updateDraftStatus({
             io,
+            socket,
             payload: {
               sessionId: draftSession._id,
               draftStatus: DRAFT_STATUS.STARTED,
@@ -463,6 +492,7 @@ async function selectPick({
 
         updateDraftStatus({
           io,
+          socket,
           payload: {
             sessionId: draftSession._id,
             draftStatus: DRAFT_STATUS.FINISHED,
