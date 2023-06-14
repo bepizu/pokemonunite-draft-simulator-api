@@ -410,7 +410,7 @@ const POKEMONS = [
       big: '/roster-umbreon-2x.png',
     },
     active: true,
-    battleType: 3
+    battleType: 4
   },
   {
     name: 'Mamoswine',
