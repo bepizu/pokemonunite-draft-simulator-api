@@ -410,6 +410,7 @@ const POKEMONS = [
       big: '/roster-umbreon-2x.png',
     },
     active: true,
+    battleType: 3
   },
   {
     name: 'Mamoswine',
@@ -545,6 +546,15 @@ const POKEMONS = [
     difficulty: 3,
   },
   {
+    name: 'Leafeon',
+    images: {
+      main: '/roster-leafeon.png',
+      big: '/roster-leafeon-2x.png',
+    },
+    active: true,
+    battleType: 2
+  },
+  {
     name: 'Glaceon',
     images: {
       main: '/roster-glaceon.png',
@@ -562,14 +572,6 @@ const POKEMONS = [
     },
     tags: ['attacker', 'ranged'],
     difficulty: 2,
-  },
-  {
-    name: 'Leafeon',
-    images: {
-      main: '/roster-leafeon.png',
-      big: '/roster-leafeon-2x.png',
-    },
-    active: true,
   },
   {
     name: 'Crustle',
