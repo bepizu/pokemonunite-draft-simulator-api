@@ -564,6 +564,14 @@ const POKEMONS = [
     difficulty: 2,
   },
   {
+    name: 'Leafeon',
+    images: {
+      main: '/roster-leafeon.png',
+      big: '/roster-leafeon-2x.png',
+    },
+    active: true,
+  },
+  {
     name: 'Crustle',
     images: {
       main: '/roster-crustle.png',
