@@ -420,7 +420,7 @@ async function selectPick({
   const { team, picks } = PICK_ORDER[draftSession.pickTurn];
   const canPickPokemon =
     (team === selectedTeam || draftSession.draftType === 'individual') &&
-    !pokemon.picked;
+    !pokemon?.picked;
 
   if (
     (!timedout &&

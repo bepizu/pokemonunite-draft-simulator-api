@@ -410,7 +410,7 @@ const POKEMONS = [
       big: '/roster-umbreon-2x.png',
     },
     active: true,
-    battleType: 4
+    battleType: 4,
   },
   {
     name: 'Mamoswine',
@@ -552,7 +552,7 @@ const POKEMONS = [
       big: '/roster-leafeon-2x.png',
     },
     active: true,
-    battleType: 2
+    battleType: 2,
   },
   {
     name: 'Glaceon',
@@ -895,6 +895,25 @@ const POKEMONS = [
     },
     tags: ['attacker', 'ranged'],
     difficulty: 1,
+  },
+  {
+    name: 'Inteleon',
+    images: {
+      main: '/roster-inteleon.png',
+      big: '/roster-inteleon-2x.png',
+      complete: '/stat-inteleon.png',
+    },
+    active: true,
+    battleType: 1,
+    stats: {
+      offense: 4.5,
+      endurance: 1.5,
+      mobility: 3.5,
+      scoring: 1.5,
+      support: 0.5,
+    },
+    tags: ['attacker', 'ranged'],
+    difficulty: 2,
   },
   {
     name: 'Greedent',
